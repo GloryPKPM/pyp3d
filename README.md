@@ -12,5 +12,5 @@ pyp3d, which stands for Python Interface of P3D, is a library that can be used o
 A series of necessary data types related to modeling is defined in pyp3d, such as a sphere, truncated cone, quadrangular pyramid, stretched body, rounded tube, and other geometric bodies. pyp3d also provides many functions to place models, connect points into lines, get cross-section, zoom model, and so on. In addition, the library also supports Boolean operations to facilitate users to subtract, merge, and intersect between models.
 
 Download:
-Use the tool pip to download: pip install pyp3d
+Use the tool pip to download: pip install pyp3d   
 Before installing pyp3d, you need to confirm whether NumPy and pywin32 are installed correctly.
