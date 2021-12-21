@@ -558,9 +558,9 @@ class Arc(Primitives):
         elif len(args) == 3:
             atanp = lambda y,x:atan2(y,x) if atan2(y,x) >=0 else atan2(y,x)+2*pi
             posi = lambda theta: theta+2*pi if theta<0 else theta
-            if isinstance(args[0],GeVec3d) and isinstance(args[1],GeVec3d) and isinstance(args[1],GeVec3d):
+            if isinstance(args[0],GeVec3d) and isinstance(args[1],GeVec3d) and isinstance(args[2],GeVec3d):
                 sec=_points_become_section(args)
-            elif isinstance(args[0],GeVec2d) and isinstance(args[1],GeVec2d) and isinstance(args[1],GeVec2d): #using function judge legal points
+            elif isinstance(args[0],GeVec2d) and isinstance(args[1],GeVec2d) and isinstance(args[2],GeVec2d): #using function judge legal points
                 sec=_points_become_section([GeVec3d(args[0].x,args[0].y,0),GeVec3d(args[1].x,args[1].y,0),GeVec3d(args[2].x,args[2].y,0)])
             else:
                 raise ValueError('improper parameters!')
