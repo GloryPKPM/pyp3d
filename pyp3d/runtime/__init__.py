@@ -57,6 +57,7 @@ class _UnifiedModule:
             self._import(moduleName, True)
             return self._getattr(moduleName, methodName)(*args)
 _sysPathSet = set()
+_globalScript = os.path.splitext(sys.argv[0])[0]
 _globalSource = os.path.split(sys.argv[0])[0]
 def get_core_source(): 
     global _globalSource
@@ -76,11 +77,13 @@ def get_global_variable(key:str):
     return _globalData[key]
 # import pyp3d as p3d
 def run_script(scriptPath:str):
-    global __name__
+    global __name__, _globalSource, _globalScript
     name = __name__
     __name__ = '__main__'
     # execfile(scriptPath)
     with open(scriptPath, encoding='UTF-8') as f:
+        _globalScript = os.path.splitext(scriptPath)[0]
+        _globalSource = os.path.split(scriptPath)[0]
         code = compile(f.read(), scriptPath, 'exec')
         exec(code, globals(), globals())
     __name__ = name
@@ -221,7 +224,7 @@ class UnifiedFunction(BufferStackBase):
                 self._methodName = args[0].__qualname__
                 self._moduleName = args[0].__module__
                 if self._moduleName == "__main__":
-                    self._moduleName = os.path.splitext(sys.argv[0])[0]
+                    self._moduleName = _globalScript
                 if len(_globalSource)==0:
                     return
                 if self._moduleName[:len(_globalSource)] == _globalSource:
@@ -248,27 +251,39 @@ class UnifiedModule:
         object.__setattr__(self, "name", name)
     def __getattribute__(self, name):
         return UnifiedFunction(object.__getattribute__(self, "name"), name)
-class _Export:
+class _Export: #namespace
     _export_method = {}
+    inheritList=[]
+    @ staticmethod # 静态方法
     def _export(fun:FunctionType):
         if not isinstance(fun, FunctionType): raise TypeError()
-        if fun.__qualname__ == fun.__name__:
-            _Core(b'actively', True)._dynmap[fun.__name__] = fun
+        if fun.__qualname__ == fun.__name__: 
+            _Core(b'actively', True)._dynmap[fun.__name__] = fun #单例类
         else:
-            name = '{0}.{1}'.format(fun.__module__, fun.__qualname__[:-1-len(fun.__name__)])
-            if name in _Export._export_method: _Export._export_method[name].append(fun.__name__)
-            else: _Export._export_method[name] = [fun.__name__]
+            name = '{0}.{1}'.format(fun.__module__, fun.__qualname__[0:-1-len(fun.__name__)])
+            basesName=fun.__qualname__[0:-1-len(fun.__name__)]
+            if(basesName not in _Export.inheritList):
+                _Export.inheritList.append(fun.__qualname__[0:-1-len(fun.__name__)])
+            if name in _Export._export_method:
+                _Export._export_method[name].append(fun.__name__)
+            else: 
+                _Export._export_method[name] = [fun.__name__]
         return fun
 export = _Export._export
-def get_export_method(name):
-    if name in _Export._export_method: return _Export._export_method[name]
-    else: return []
+def get_export_method(name,baseNameList): #nameClass
+    if name in _Export._export_method:
+        return _Export._export_method[name]
+    else:
+        for i in baseNameList: # has been baseNameList.reverse()
+            if i in _Export._export_method:
+                return _Export._export_method[i]
+        return []
+
 def import_module(name, reimport=False): return _UnifiedModule()._import(name, reimport)
 def getattr_from(name, attr): return _UnifiedModule()._getattr(name, attr)
 def nonstatic_call_forwarding(uf, this, args):
     res = _UnifiedModule()(uf._moduleName, uf._methodName, this, *args)
     return [this, res]
+PARACMPT_PARAMETRIC_COMPONENT = 'BPParametricComponent'
 def exe_command(command:str):
     UnifiedFunction(PARACMPT_PARAMETRIC_COMPONENT, "exe_command")(command)
-
-    

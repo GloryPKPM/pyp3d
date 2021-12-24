@@ -157,6 +157,9 @@ def place(noumenon:Noumenon): #通过布置工具放置组件
     if get_global_variable('is_script_to_josn'):
         set_global_variable('script_to_josn', noumenon)
     else:
+        depend = DependentFile()
+        depend.readFile(sys.argv[0])
+        noumenon[PARACMPT_KEYWORD_DEPENDENT_FILE] = depend
         UnifiedFunction(PARACMPT_PARAMETRIC_COMPONENT, PARACMPT_PLACE_INSTANCE)(noumenon)
 
 def get_data(noumenon:Noumenon): #获取launchData数据
@@ -169,6 +172,9 @@ def place_to(noumenon:Noumenon, transform:GeTransform):
     '''
     appoint position where geometry place to
     '''
+    depend = DependentFile()
+    depend.readFile(sys.argv[0])
+    noumenon[PARACMPT_KEYWORD_DEPENDENT_FILE] = depend
     UnifiedFunction(PARACMPT_PARAMETRIC_COMPONENT, PARACMPT_PLACE_INSTANCE_TO)(noumenon, transform)
 
 def create_bsplinepoints(controlPoints:list,curveOrder:int,discreteNum:int)->list:
@@ -268,7 +274,10 @@ def get_instancekey_from_entity(entityid:P3DEntityId)->P3DInstanceKey:
     '''
     if not isinstance(entityid,P3DEntityId):
         raise TypeError('输入类型错误，请输入P3DEntityId类型：')
-    return UnifiedFunction(PARACMPT_PARAMETRIC_COMPONENT,PARACMPT_GET_INSTANCEKEY_FROM_ENTITY)(entityid)   
+    return UnifiedFunction(PARACMPT_PARAMETRIC_COMPONENT,PARACMPT_GET_INSTANCEKEY_FROM_ENTITY)(entityid) 
+def get_scale(point:GeVec3d):
+    
+    return UnifiedFunction(PARACMPT_PARAMETRIC_COMPONENT,PARACMPT_GET_SCALE)(point)  
 
 
 
@@ -1387,8 +1396,7 @@ class Box(Loft): #四棱台 2.0
         self.parts = [section_a,section_b]
 
 class RuledSweep(Loft): #直纹扫描
-    def __init__(self, points1=[GeVec3d(0,0,0),GeVec3d(0,1,0),GeVec3d(2,0,0)], \
-                    points2 = [GeVec3d(0,0,2),GeVec3d(0,2,1),GeVec3d(2,0,1)]):
+    def __init__(self, points1=[GeVec3d(0,0,0),GeVec3d(0,1,0),GeVec3d(3,0,0)], points2 = [GeVec3d(0,0,2),GeVec3d(0,2,0),GeVec3d(6,0,0)]):
         Loft.__init__(self)
         self._name = 'RuledSweep'
         if len(points1)!=len(points2):
@@ -1400,9 +1408,8 @@ class RuledSweep(Loft): #直纹扫描
         self.parts = [section_a,section_b]
 
 class RuledSweepPlus(Loft): #直纹扫描+
-    def __init__(self, contours =[[GeVec3d(0,0,0),GeVec3d(0,1,0),GeVec3d(1,0,0)],\
-                                [GeVec3d(0,0,1),GeVec3d(0,1/2,1),GeVec3d(1/2,0,1)],\
-                                [GeVec3d(0,0,2),GeVec3d(0,1,2),GeVec3d(1,0,2)]]):
+    def __init__(self, contours =[[GeVec3d(0,0,0),GeVec3d(0,1,0),GeVec3d(1,0,0)],[GeVec3d(0,0,1),GeVec3d(0,1,1),GeVec3d(1,0,1)],\
+        [GeVec3d(0,0,2),GeVec3d(0,1,2),GeVec3d(1,0,2)]]):
         Loft.__init__(self)
         self._name = 'RuledSweepPlus'
         self.smooth = True
@@ -1413,7 +1420,7 @@ class RuledSweepPlus(Loft): #直纹扫描+
 
 class TorusPipe(Sweep): # 环形管 2.0
     def __init__(self, center=GeVec3d(0,0,0), vectorX=GeVec3d(1,0,0), vectorY= GeVec3d(0,1,0), 
-                  torusRadius=5, pipeRadius=1, sweepAngle=2*pi):
+                  torusRadius=10, pipeRadius=1, sweepAngle=2*pi):
         Sweep.__init__(self)
         self.representation = 'TorusPipe'
         arcSection = translate(torusRadius,0,0)*scale(pipeRadius) * Arc()
@@ -1429,8 +1436,7 @@ class TorusPipe(Sweep): # 环形管 2.0
         self.trajectory = line
 
 class RotationalSweep(Sweep): # 旋转扫描 (圆弧放样) 2.0
-    def __init__(self, points=[GeVec3d(2,0,0),GeVec3d(3,0,0),GeVec3d(2,1,0)],\
-        center=GeVec3d(0,0,0), axis=GeVec3d(0,1,0), sweepAngle=1.5*pi):
+    def __init__(self, points=[GeVec3d(50,0,0),GeVec3d(60,0,0),GeVec3d(50,10,0)],center=GeVec3d(0,0,0), axis=GeVec3d(0,1,0), sweepAngle=1.5*pi):
         Sweep.__init__(self)
         self.representation = 'RotationalSweep'
         if isinstance(points[0],GeVec3d):
@@ -1630,8 +1636,8 @@ class ExtrusionPlus(Sweep): # 复杂拉伸体 2.0
         self.trajectory = line
 
 class FilletPipe(Combine): # 圆角管
-    def __init__(self, points=[GeVec3d(0,0,0),GeVec3d(100,0,0),GeVec3d(100,0,50),GeVec3d(200,0,0)], \
-        filletRadius=[0,5,5,0], pipeRadius=2):
+    def __init__(self, points=[GeVec3d(0,0,0),GeVec3d(10000,0,0),GeVec3d(10000,0,5000),GeVec3d(20000,0,0)], \
+        filletRadius=[0,500,500,0], pipeRadius=200.0):
         Combine.__init__(self)
         self.representation = 'FilletPipe'
         if len(points) != len(filletRadius):
@@ -1656,29 +1662,49 @@ class FilletPipe(Combine): # 圆角管
         self.parts.append(Cone(point_start, points[-1], pipeRadius, pipeRadius))
 
 class CurveLoft(Loft): # 曲线放样 2.0
-    def __init__(self, outerLine=[Arc()], keypoints=[GeVec3d(0,0,0),GeVec3d(10,0,0),GeVec3d(10,10,0),GeVec3d(0,10,0)], \
-        discreteNum=50, curveOrder=3):
+    def __init__(self, outerLine: list, keypoints: list, discreteNum: int, curveOrder=3):
         Loft.__init__(self)
         self.representation = 'CurveLoft'
         self.smooth = True
         section=rotate(Vec3(0,1,0),-pi/2)*Section(*outerLine)
         # section=rotate(Vec3(0,1,0),-pi/2)*to_section(outerLine)
         points=create_bsplinepoints(keypoints,curveOrder,discreteNum)
-        leanSection = lambda pointY,pointX,theta:rotate(Vec3(0,0,1),atan2(pointY.y-pointX.y,pointY.x-pointX.x)+theta)
+        lean_section = lambda pointY,pointX,theta:rotate(Vec3(0,0,1),atan2(pointY.y-pointX.y,pointY.x-pointX.x)+theta)
         lengP=len(points)
         lineList=[] # segment
         for i in range(lengP-1):
             lineList.append([points[i],points[i+1]])
-        sectionList=[translate(points[0])*leanSection(points[1],points[0],0)*section]
+        sectionList=[translate(points[0])*lean_section(points[1],points[0],0)*section]
         for i in range(1,lengP-1):
             theta=_vector_to_angle(lineList[i-1],lineList[i])/2
             matrix=GeTransform([[1/cos(theta),0,0,0],
                                 [0,1/cos(theta),0,0],
                                 [0,0,1,0]])
-            sectioni=translate(points[i])*matrix*leanSection(points[i],points[i-1],theta)*section
+            sectioni=translate(points[i])*matrix*lean_section(points[i],points[i-1],theta)*section
             sectionList.append(sectioni)
-        sectionList.append(translate(points[lengP-1])*leanSection(points[lengP-1],points[lengP-2],0)*section)
+        sectionList.append(translate(points[lengP-1])*lean_section(points[lengP-1],points[lengP-2],0)*section)
         self.parts = [*sectionList]
+
+def straight_sweep(section:Section,line:Line):
+    lean_section = lambda pointY,pointX,theta:rotate(Vec3(0,0,1),atan2(pointY.y-pointX.y,pointY.x-pointX.x)+theta)
+    section=rotate(Vec3(0,1,0),-pi/2)*section
+    points=line.parts
+    lengP=len(points)
+    lineList=[] # segment
+    for i in range(lengP-1):
+        lineList.append([points[i],points[i+1]])
+    sectionList=[translate(points[0])*lean_section(points[1],points[0],0)*section]
+    for i in range(1,lengP-1):
+        theta=_vector_to_angle(lineList[i-1],lineList[i])/2
+        matrix=GeTransform([[1/cos(theta),0,0,0],
+                            [0,1/cos(theta),0,0],
+                            [0,0,1,0]])
+        sectioni=translate(points[i])*matrix*lean_section(points[i],points[i-1],theta)*section
+        sectionList.append(sectioni)
+    sectionList.append(translate(points[lengP-1])*lean_section(points[lengP-1],points[lengP-2],0)*section)
+    curveloft=Loft(*sectionList)#.color(0,1,0)
+    curveloft.smooth=True
+    return curveloft
 
 class P3DData(Component):
     '''
@@ -1965,6 +1991,35 @@ class MultiPointPlace:
     # def MultiPointKey(self, value):
     #     self._data['\tMultiPointKey'] = _Property('')
     #     self._data['\tMultiPointKey'].value = value
+    
+def gripMove(data:P3DData, currentGrip):
+    offset = data["currentPos"] - data.transformation * data[currentGrip]
+    data.transformation = translation(data[currentGrip] + offset) * data.transformation
+
+def gripRotation(data:P3DData, currentGrip, axis, angle, origin = GeVec3d(0, 0, 0)):
+    '''
+    axis     旋转轴
+    angle    旋转角度
+    origin   原点
+    '''
+    data.transformation = data.transformation * translation(origin) * rotation(axis, angle) * translation(origin)
+
+def gripInit(data:P3DData):
+    # 查找所有item 看属性值是否为True
+    for key, value in data.items():
+        if 'bActive' in value._attr and value['bActive']:
+            if (value['gripstyle'] == 'dots') :
+                gripMove(data, key)                  
+            elif (value['gripstyle'] == 'spin' and value['bPressed']== False):
+                gripRotation(data, key,value['axis'], value['angle'])
+            else :
+                pass
+            value['bActive'] = False
+            value['bPressed'] = False
+            data['curSelectedGrip'] = key
+           
+            break  
+
 
 Vec3 = GeVec3d
 Vec2 = GeVec2d

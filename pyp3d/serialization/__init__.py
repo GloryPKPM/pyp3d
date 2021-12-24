@@ -2,8 +2,10 @@
 # Brief: 持久化标准
 # Author: YouQi
 # Date: 2021/05/10
+import os
 import struct
-from typing import overload
+from sys import path_hooks
+from typing import List, overload
 MARKER_LENGTH, INFOR_LENGTH, ULL, ERROR_INOFR = 8, 16, 'Q', '[serialization]: deserialization error.'
 class BufferStack:
     '''
@@ -88,6 +90,70 @@ class BufferStackBase:
     '''
     def _push_to(self, bs:BufferStack)->None: raise NotImplementedError()
     def _pop_from(self, bs:BufferStack)->None: raise NotImplementedError()
+class DependentFile(BufferStackBase):
+    '''
+    依赖文件
+    '''
+    def __init__(self):
+        self.fildor = []
+    def readFile(self, path:str):
+        self.fildor = self._getAllFile(path)
+    def _getAllFile(self, path:str):
+        if path == "":
+            return
+        if os.path.isdir(path):
+            pathList = []
+            dirs = os.listdir(path)
+            for dir in dirs:
+                dirPath = os.path.join(path, dir)
+                res = self._getAllFile(dirPath)
+                if len(res) != 0:
+                    pathList.append(res)
+            if len(pathList) == 0:
+                return []
+            else:
+                return [pathList, True, os.path.split(path)[1]]
+        else:
+            f = open(path, 'rb')
+            content = f.read()
+            f.close()
+            return [bytearray(content), False, os.path.split(path)[1]]
+    def _readFromFolder(self, pathList:list, bs):
+        for path in pathList:
+            if path[1]:
+                if not isinstance(path[0], bool):
+                    self._readFromFolder(path[0], bs)
+            else:
+                bs.push(path[0])
+            bs.push(path[1])
+            bs.push(path[2])
+        bs.push(Size_t(len(pathList)))
+    def _resetToFolder(self, pathList:list, bs):
+        for _ in range(bs.pop()):
+            fileName = bs.pop()
+            if bs.pop():
+                filelist = []
+                self._resetToFolder(filelist, bs)
+                if len(filelist) == 1 & filelist[0][1]:
+                    filelist = filelist[0]
+                else:
+                    filelist.reverse()
+                pathList.append([filelist, True, fileName])
+            else:
+                pathList.append([bs.pop(), False, fileName])
+    def _push_to(self, bs):
+        if len(self.fildor) == 0:
+            return
+        if isinstance(self.fildor[0], bytearray):
+            self._readFromFolder([self.fildor], bs)
+        else:
+            self._readFromFolder(self.fildor[0], bs)
+            bs.push(self.fildor[1])
+            bs.push(self.fildor[2])
+            bs.push(Size_t(1))
+    def _pop_from(self, bs):
+        self._resetToFolder(self.fildor, bs)
+        self.fildor = self.fildor[0]
 class Size_t(BufferStackBase, int):
     '''
     C++类型。
@@ -111,6 +177,7 @@ enrol(0x4500450011720048, type(None), lambda x: b'', lambda x: None)
 enrol(0x1580142273520992, bool, lambda x: struct.pack('?', x), lambda x: struct.unpack('?', x.data)[0])
 enrol(0x7175318778202422, float, lambda x: struct.pack('d', x), lambda x: struct.unpack('d', x.data)[0])
 enrol(0x4569571470222419, int, lambda x: struct.pack('q', x), lambda x: struct.unpack('q', x.data)[0])
+enrol(0x0181635124290115, DependentFile)
 enrol(0x2477702224190092, Size_t)
 enrol(0x1316456973520092, str, lambda x: x.encode(encoding='GBK'), lambda x: x.data.decode(encoding='GBK'))
 enrol(0x0059665104550025, bytearray, lambda x: x, lambda x: x.data)
@@ -125,18 +192,22 @@ if __name__ == "__main__":
     '''
     if False:
         bs = BufferStack()
-        bs.push(Size_t(123456))
-        bs.push(-123456)
-        bs.push('sdf')
-        bs.push([1,3,'1abb'])
-        bs.push(1, {'k1':'v1','k2':'v2','k3':'v3'})
-        print(bs.pop())
-        print(bs.pop())
-        print(bs.pop())
-        print(bs.pop())
-        print(bs.pop())
-        print(bs.pop())
-        print(bs.data)
+        depend = DependentFile()
+        depend.readFile("C:\\Users\\wuguoliang\\Desktop\\a")
+        print(depend.fildor)
+        bs.push(depend)
+        # bs.push(Size_t(123456))
+        # bs.push(-123456)
+        # bs.push('sdf')
+        # bs.push([1,3,'1abb'])
+        # bs.push(1, {'k1':'v1','k2':'v2','k3':'v3'})
+        # print(bs.pop())
+        # print(bs.pop())
+        # print(bs.pop())
+        # print(bs.pop())
+        # print(bs.pop())
+        # print(bs.data)
+        bs.pop()
     if False:
         import time
         for num in [10000, 100000, 1000000, 10000000]:
